@@ -7,6 +7,7 @@ PYPI_PACKAGE = "python-dateutil"
 # PyPI distributes this as 2.9.0.post0; override the archive name so the
 # pypi class fetches the correct tarball (PV stays 2.9.0 for BitBake).
 PYPI_ARCHIVE_NAME = "python-dateutil-2.9.0.post0.tar.gz"
+S = "${WORKDIR}/python-dateutil-2.9.0.post0"
 
 inherit pypi setuptools3
 

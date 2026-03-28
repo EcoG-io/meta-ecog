@@ -1,0 +1,19 @@
+[Unit]
+Description=OCPP Service for i.MX93
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ocpppy/cs
+# Environment variables as requested
+Environment="MQTT_PORT=1883"
+Environment="MQTT_HOST=localhost"
+Environment="CS_DEFAULT_HEARTBEAT_INTERVAL=60"
+# Start the application
+ExecStart=/usr/bin/python3 run.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

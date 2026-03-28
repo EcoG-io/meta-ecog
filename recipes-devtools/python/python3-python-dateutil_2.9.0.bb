@@ -12,14 +12,19 @@ S = "${WORKDIR}/python-dateutil-2.9.0.post0"
 
 inherit setuptools3
 
-do_configure:prepend() {
-    # setup.py uses setuptools_scm to derive the version at build time,
-    # which tries to invoke pip — not available in Yocto. Remove setup_requires
-    # and inject the version statically so setuptools3 can build normally.
-    sed -i \
-        -e "/setup_requires/d" \
-        -e "s/use_scm_version=True/version='2.9.0.post0'/" \
-        ${S}/setup.py
+do_compile:prepend() {
+    # setup.py uses use_scm_version={...} and setup.cfg declares
+    # setup_requires = setuptools_scm — both cause setuptools to invoke pip
+    # at build time, which is unavailable in the Yocto sandbox.
+    # Patch setup.py to use a static version and remove setup_requires from setup.cfg.
+    python3 -c "
+import re
+path = '${S}/setup.py'
+content = open(path).read()
+content = re.sub(r'use_scm_version=\{[^}]+\},', \"version='2.9.0.post0',\", content)
+open(path, 'w').write(content)
+"
+    sed -i '/^setup_requires/d' ${S}/setup.cfg
 }
 
 RDEPENDS:${PN} += "python3-six"

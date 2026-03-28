@@ -1,55 +1,102 @@
-# meta-ecog: OCPP Service Layer
+# meta-ecog: EcoG OCPP Service Yocto Layer
 
-This Yocto layer provides the **EcoG OCPP Service**, a Python-based implementation for EV charging communication. It is designed to bridge modern Python development workflows (Poetry/Pip) with the Yocto/OpenEmbedded build system.
+Yocto meta-layer providing the **EcoG OCPP 2.0.1 Charging Station service** and all its Python dependencies, built from source and installed directly into the rootfs.
 
+Compatible with **Yocto Scarthgap (5.0)**.
 
-1. Installation Paths
-The package is installed in an isolated directory structure to ensure system stability and avoid conflicts with the standard Yocto Python environment:
+---
 
-| Component | Target Path | Description |
-| :--- | :--- | :--- |
-| **Application Source** | `/opt/ocpppy/cs/` | [cite_start]Core service logic and entry point (`run.py`).  |
-| **Dependency Bundle** | `/opt/ocpppy/bundle/` | [cite_start]Isolated Python site-packages and binary extensions.  |
-| **Systemd Unit** | `/lib/systemd/system/` | [cite_start]Service management file (`ocpp-service.service`).  |
+## What this layer provides
 
+| Component | Description |
+|-----------|-------------|
+| `recipes-apps/ocpp-service` | OCPP charging station application, installed to `/opt/ocpppy/cs/`, managed by systemd |
+| `recipes-devtools/python/` | All Python runtime dependencies built from source (cryptography, rpds-py, ocpp, asyncio-mqtt, sqlalchemy, etc.) |
 
-2. Setup and Integration
+All Python packages are installed into the **rootfs** as standard Yocto packages. There is no pip install, no virtualenv, and no bundle directory at runtime — the packages are part of the image.
 
-Add the `meta-ecog` layer to your BitBake build environment:
+---
 
+## Usage
+
+### 1. Add the layer
+
+```bash
 bitbake-layers add-layer path/to/meta-ecog
+```
 
-3. Service Configuration
+Or add manually to `bblayers.conf`:
 
-The service is pre-configured via the ocpp-service.service file to utilize the isolated bundle. This ensures the application uses the specific versions of libraries (like cryptography and rpds-py) bundled during the build process.
+```bitbake
+BBLAYERS += "/path/to/meta-ecog"
+```
 
-Key Environment Variables:
+### 2. Add to your image
 
-    PYTHONPATH: /opt/ocpppy/bundle/lib/python3.12/site-packages
+In your image recipe (`.bb` file):
 
-    WorkingDirectory: /opt/ocpppy/cs
+```bitbake
+IMAGE_INSTALL:append = " ocpp-service"
+```
 
-    Default MQTT Host: localhost 
+This pulls in `ocpp-service` and all its `RDEPENDS` (Python packages) automatically.
 
-4. Technical Implementation Details
+### 3. Configure the service
 
-Architecture-Specific Binaries
+The systemd unit has sensible defaults. The only deployment-specific variable is the CSMS WebSocket URL. Set it via a systemd drop-in on the device:
 
-The recipe dynamically detects the TARGET_ARCH to ensure that compiled Python extensions match the target hardware:
+```bash
+systemctl edit ocpp-service
+```
 
-    aarch64 (e.g., i.MX93): Maps to manylinux2014_aarch64.
+```ini
+[Service]
+Environment="CSMS_URL_OVERRIDE=wss://your-csms-host/ws"
+```
 
-    arm (e.g., v7l): Maps to linux_armv7l.
+Or place a `.env` file at `/opt/ocpppy/cs/.env` — the application reads it automatically at startup.
 
-    5. Usage and Troubleshooting
-Managing the Service
+**Default environment (already in the service unit):**
 
-Start the service:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MQTT_HOST` | `localhost` | MQTT broker host |
+| `MQTT_PORT` | `1883` | MQTT broker port |
+| `CS_DEFAULT_HEARTBEAT_INTERVAL` | `60` | OCPP heartbeat interval (seconds) |
 
+An MQTT broker (e.g. mosquitto) must be running on the device:
 
+```bitbake
+IMAGE_INSTALL:append = " ocpp-service mosquitto"
+```
+
+---
+
+## Installation paths on target
+
+| Path | Contents |
+|------|----------|
+| `/opt/ocpppy/cs/` | Application source and entry point (`run.py`) |
+| `/lib/systemd/system/ocpp-service.service` | Systemd unit file |
+
+Python packages are in the standard rootfs location (`/usr/lib/python3.x/site-packages/`), not in a separate bundle.
+
+---
+
+## Managing the service
+
+```bash
 systemctl start ocpp-service
+systemctl stop ocpp-service
+systemctl enable ocpp-service      # start on boot
+journalctl -fu ocpp-service        # follow logs
+```
 
-Monitor logs:
+---
 
+## Python dependency version pinning
 
-journalctl -u ocpp-service -f
+All Python packages are pinned to exact versions matching `requirements.txt`. Where the Yocto scarthgap base layer (`meta`) ships a conflicting version, this layer overrides it:
+
+- Packages at a **higher version** in this layer automatically win (Yocto selects the highest available version).
+- `python3-websockets` is explicitly pinned via `PREFERRED_VERSION` in `conf/layer.conf` because the scarthgap base ships a newer version (13.0.1) than required (12.0).

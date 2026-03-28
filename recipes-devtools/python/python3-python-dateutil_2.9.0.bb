@@ -1,7 +1,7 @@
 SUMMARY = "Extensions to the standard Python datetime module"
 HOMEPAGE = "https://dateutil.readthedocs.io/"
-LICENSE = "BSD-3-Clause"
-LIC_FILES_CHKSUM = "file://LICENSE;md5=51d9729f70c1b29a5c8a9cf866b32456"
+LICENSE = "Apache-2.0 & BSD-3-Clause"
+LIC_FILES_CHKSUM = "file://LICENSE;md5=e3155c7bdc71f66e02678411d2abf996"
 
 # PyPI distributes this as 2.9.0.post0; set SRC_URI explicitly so the
 # pypi class does not override S with the base version directory name.

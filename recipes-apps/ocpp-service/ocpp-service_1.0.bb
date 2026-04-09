@@ -33,7 +33,7 @@ RDEPENDS:${PN} += " \
     python3-paho-mqtt \
     python3-pycparser \
     python3-pyopenssl \
-    python3-dateutil \
+    python3-python-dateutil \
     python3-python-dotenv \
     python3-referencing \
     python3-rpds-py \
